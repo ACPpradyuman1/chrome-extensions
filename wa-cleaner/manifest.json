@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "WhatsApp Web Bulk Deleter",
+  "version": "1.0",
+  "description": "Bulk-delete WhatsApp Web messages that match a keyword.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://web.whatsapp.com/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["content.js"],
+      "css": ["panel.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "toggle-panel": {
+      "suggested_key": { "default": "Alt+Shift+D" },
+      "description": "Open/close the WhatsApp bulk-delete panel"
+    }
+  }
+}

@@ -1,0 +1,118 @@
+#wac-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 99999;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #00a884;
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#wac-panel {
+  position: fixed;
+  top: 72px;
+  right: 24px;
+  z-index: 99999;
+  width: 300px;
+  background: #111b21;
+  color: #e9edef;
+  border: 1px solid #2a3942;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  padding: 12px;
+}
+
+#wac-panel.wac-hidden {
+  display: none;
+}
+
+#wac-panel h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#wac-panel .wac-close {
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: #aebac1;
+  font-size: 16px;
+}
+
+#wac-panel input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  border: 1px solid #2a3942;
+  background: #202c33;
+  color: #e9edef;
+}
+
+#wac-panel label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  color: #aebac1;
+}
+
+#wac-panel .wac-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+#wac-panel button.wac-btn {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: none;
+  background: #2a3942;
+  color: #e9edef;
+  cursor: pointer;
+}
+
+#wac-panel button.wac-btn:hover {
+  background: #364650;
+}
+
+#wac-panel button.wac-btn.wac-primary {
+  background: #00a884;
+  color: #fff;
+}
+
+#wac-panel button.wac-btn.wac-primary:hover {
+  background: #06cf9c;
+}
+
+#wac-panel button.wac-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#wac-log {
+  max-height: 140px;
+  overflow-y: auto;
+  background: #0b141a;
+  border-radius: 6px;
+  padding: 6px 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.4;
+}
