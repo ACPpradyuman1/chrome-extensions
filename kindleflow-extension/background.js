@@ -131,8 +131,12 @@ function startNativeJob(payload) {
       if (err) {
         console.error("Native port disconnect in background:", err.message);
         activeJob.status = "error";
-        activeJob.message = err.message;
-        broadcastToPopup({ status: "error", message: err.message });
+        let userMsg = err.message || "Native host disconnected.";
+        if (userMsg.includes("Specified native messaging host not found")) {
+          userMsg = "Native Host not found. Run ./install.sh in the extension folder to complete setup.";
+        }
+        activeJob.message = userMsg;
+        broadcastToPopup({ status: "error", message: userMsg });
       }
     });
 
@@ -142,7 +146,11 @@ function startNativeJob(payload) {
   } catch (err) {
     console.error("Native connection error in background:", err);
     activeJob.status = "error";
-    activeJob.message = err.message;
-    broadcastToPopup({ status: "error", message: err.message });
+    let userMsg = err.message || "Failed to start native host.";
+    if (userMsg.includes("Specified native messaging host not found")) {
+      userMsg = "Native Host not found. Run ./install.sh in the extension folder to complete setup.";
+    }
+    activeJob.message = userMsg;
+    broadcastToPopup({ status: "error", message: userMsg });
   }
 }

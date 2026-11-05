@@ -59,44 +59,40 @@ kindleflow-extension/
 ### Prerequisites
 
 1. Google Chrome (or Chromium-based browser like Brave or Edge).
-2. Python 3.8+ with `pip`.
+2. Python 3.8+.
 3. A Google Gemini API key from Google AI Studio (available on the free tier).
 
 ---
 
-### Step 1: Install Python Dependencies
+### Step 1: Run the 1-Click Setup Script
 
-Open your terminal and install the required packages:
+Open your terminal, navigate to the extension directory, and run the automated installer:
 
 ```bash
 cd kindleflow-extension
-pip3 install -r requirements.txt
-```
-
----
-
-### Step 2: Register the Native Messaging Host
-
-Run the included installer to register the native messaging host with Google Chrome:
-
-```bash
 ./install.sh
 ```
 
-This creates the native messaging manifest in `~/Library/Application Support/Google/Chrome/NativeMessagingHosts` on macOS or `~/.config/google-chrome/NativeMessagingHosts` on Linux.
+*(On Windows, simply double-click `install.bat`).*
+
+This single automated command:
+- Verifies Python 3 and automatically resolves and installs required dependencies in an isolated environment.
+- Configures the native host launcher.
+- Automatically registers the native messaging host across all detected Chromium browsers (Chrome, Brave, Edge, Chromium, Arc, Vivaldi).
+- Automatically copies the extension directory path directly to your clipboard.
 
 ---
 
-### Step 3: Load the Extension in Chrome
+### Step 2: Load the Extension in Chrome
 
-1. In Chrome, navigate to `chrome://extensions`.
+1. Open `chrome://extensions` in your browser.
 2. Toggle on **Developer mode** in the top-right corner.
-3. Click **Load unpacked** in the top-left corner.
-4. Select the `kindleflow-extension/` directory.
+3. Click **Load unpacked** in the top toolbar.
+4. Select the `kindleflow-extension/` directory (or press Cmd+Shift+G / Ctrl+V to paste the path copied from Step 1).
 
 ---
 
-### Step 4: Configure Settings
+### Step 3: Configure Settings
 
 1. Click the KindleFlow icon in your Chrome toolbar.
 2. Click the Settings icon in the top header.

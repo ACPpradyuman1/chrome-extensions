@@ -43,7 +43,7 @@ To load any of the extensions locally in Google Chrome:
 - Resilient background worker: operations run via a background service worker so tasks continue uninterrupted even if the user clicks away from the popup.
 - Runs strictly on-demand via a local Python Native Messaging host (zero idle memory footprint).
 
-**Files:** `popup.html`, `popup.js`, `background.js`, `native_host.py`, `install.sh`, `requirements.txt`, `manifest.json`, `libs/Readability.js`, `core/package_epub.py`, `core/generate_cover.py`, `core/send_to_kindle.py`, `core/style.css`, `icons/`
+**Files:** `popup.html`, `popup.js`, `background.js`, `native_host.py`, `run_host.sh`, `install.sh`, `install.bat`, `requirements.txt`, `manifest.json`, `libs/Readability.js`, `core/package_epub.py`, `core/generate_cover.py`, `core/send_to_kindle.py`, `core/style.css`, `icons/`
 
 **Permissions:** `activeTab`, `scripting`, `nativeMessaging`, `storage`, `downloads`, `notifications`.
 
