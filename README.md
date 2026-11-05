@@ -4,6 +4,7 @@ A collection of small, focused Chrome extensions (Manifest V3).
 
 | Extension | Purpose |
 |---|---|
+| [kindleflow-extension](kindleflow-extension) | 1-Click Clean Reader: Strip ads, preserve diagrams, and compile to Kindle EPUB / Markdown / HTML |
 | [site-blocker](site-blocker) | Block a list of sites you choose |
 | [tab-renamer](tab-renamer) | Give any tab a custom title |
 | [wl-cleaner](wl-cleaner) | Bulk-select and remove videos from your YouTube Watch Later list |
@@ -68,3 +69,19 @@ A collection of small, focused Chrome extensions (Manifest V3).
 **Files:** `background.js`, `content.js`, `panel.css`, `manifest.json`
 
 **Permissions:** `storage` (remembers your last keyword/options), host access scoped to `https://web.whatsapp.com/*`.
+
+## kindleflow-extension
+
+**KindleFlow** — 1-click clean reader and Kindle publisher powered by Mozilla Readability and Google Gemini AI.
+
+- Extracts article text and figures using Mozilla's Readability engine.
+- Filters out ads, sponsored sections, clickbait, and cookie banners using Google Gemini AI while intelligently preserving informative diagrams, charts, infographics, and technical tables.
+- Automatically generates an executive summary bullet list and formats content with high-contrast typography optimized for Kindle Paperwhite (12th Gen Carta 1300 / 300 PPI).
+- Offers 4 instant actions: direct delivery to `@kindle.com` via SMTP, standalone Kindle EPUB download (for zero-credential manual upload via [amazon.com/sendtokindle](https://www.amazon.com/sendtokindle)), structured Markdown download, or clean offline HTML download.
+- Fast multi-threaded pipeline: concurrently downloads inline images with an 8-worker thread pool and renders custom 300 PPI book covers during the AI network stream (~2–3s builds).
+- Resilient background worker: operations run via a background service worker so tasks continue uninterrupted even if the user clicks away from the popup.
+- Runs strictly on-demand via a local Python Native Messaging host (zero idle memory footprint).
+
+**Files:** `popup.html`, `popup.js`, `background.js`, `native_host.py`, `install.sh`, `requirements.txt`, `manifest.json`, `libs/Readability.js`, `core/package_epub.py`, `core/generate_cover.py`, `core/send_to_kindle.py`, `core/style.css`, `icons/`
+
+**Permissions:** `activeTab`, `scripting`, `nativeMessaging`, `storage`, `downloads`, `notifications`.

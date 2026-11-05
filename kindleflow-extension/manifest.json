@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "KindleFlow: 1-Click Clean Reader & Kindle Publisher",
+  "version": "1.0.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwj2q7F1rMs63+EkwtNtlyRlq5bpr0Hh1z2rZcBRx/oiQ/tjUdcVHAexryKSdEjNoIzRgG6AkEZkNaEw/ITW/R0koLdiTygPjpvggS1jdvdZPWQVr5TyqYhL7Gw5UDNX4o1f2o51oMC1xXVINIKKPBCpOtmsYLRXJsFgA0BC3XghsgkcKJ3+od9mHGlbYaHfOvC4Yqfi0C5w9fPKk0fBSnO0t0gX2ssKHJ+rDBtnxuZH0AF83/S3lyozKMgHbGeQoGFR/sj/1VctTSI/5FEYBI4iPPaJS4WAdBZodYUa7bbe0kAPzOfDPsZ+C+n1sISNXUmtewi3zTX49O7Ah1olpHwIDAQAB",
+  "description": "Clean articles, remove ads, preserve charts & diagrams with Gemini, and download HTML/Markdown or send directly to Kindle.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "nativeMessaging",
+    "storage",
+    "downloads",
+    "notifications"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}

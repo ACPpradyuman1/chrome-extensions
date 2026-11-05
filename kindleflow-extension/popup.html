@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KindleFlow</title>
+  <style>
+    :root {
+      --bg: #121821;
+      --card-bg: #1c2635;
+      --card-border: #2c3a50;
+      --gold: #c6a869;
+      --gold-hover: #dfc07e;
+      --text: #ffffff;
+      --text-muted: #8e9fb5;
+      --accent: #38bdf8;
+      --green: #10b981;
+      --red: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      width: 360px;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      overflow-x: hidden;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-icon {
+      width: 24px;
+      height: 24px;
+      background: var(--gold);
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: var(--bg);
+      font-size: 14px;
+      font-family: Georgia, serif;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--text);
+    }
+
+    .brand-tag {
+      font-size: 10px;
+      background: rgba(198, 168, 105, 0.2);
+      color: var(--gold);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(198, 168, 105, 0.3);
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s;
+    }
+
+    .icon-btn:hover {
+      color: var(--text);
+    }
+
+    /* Article Card */
+    .article-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+
+    .article-site {
+      font-size: 11px;
+      color: var(--accent);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .article-title {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.35;
+      color: var(--text);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+
+    .article-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      gap: 10px;
+    }
+
+    /* Action Buttons */
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-kindle {
+      background: linear-gradient(135deg, #c6a869 0%, #aa8b47 100%);
+      color: #0e141c;
+      box-shadow: 0 2px 8px rgba(198, 168, 105, 0.25);
+    }
+
+    .btn-kindle:hover:not(:disabled) {
+      background: linear-gradient(135deg, #dfc07e 0%, #ba9952 100%);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--card-bg);
+      color: var(--text);
+      border-color: var(--card-border);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #253347;
+      border-color: #3b4e6b;
+    }
+
+    .btn-icon {
+      font-size: 15px;
+    }
+
+    /* Live Progress Tracker */
+    .progress-box {
+      display: none;
+      background: #0d121a;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .progress-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      transition: all 0.2s ease;
+    }
+
+    .step-item.active {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .step-item.completed {
+      color: var(--green);
+    }
+
+    .step-circle {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1.5px solid var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .step-item.active .step-circle {
+      border-color: var(--gold);
+      color: var(--gold);
+      box-shadow: 0 0 6px rgba(198, 168, 105, 0.4);
+      animation: pulse 1.5s infinite;
+    }
+
+    .step-item.completed .step-circle {
+      border-color: var(--green);
+      background: var(--green);
+      color: #0e141c;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+
+    .live-log {
+      margin-top: 10px;
+      padding: 6px 8px;
+      background: rgba(0, 0, 0, 0.4);
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 10px;
+      color: var(--accent);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Settings Panel */
+    .settings-panel {
+      display: none;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .form-group {
+      margin-bottom: 10px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .form-input {
+      width: 100%;
+      background: #0d121a;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 7px 10px;
+      border-radius: 5px;
+      font-size: 12px;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+
+    .form-hint {
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .form-hint a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .btn-save {
+      width: 100%;
+      background: var(--gold);
+      color: #0e141c;
+      padding: 7px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+
+    /* Notification / Toast */
+    .toast {
+      display: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    .toast-success {
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid var(--green);
+      color: #6ee7b7;
+    }
+
+    .toast-error {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid var(--red);
+      color: #fca5a5;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="brand">
+      <div class="brand-icon">K</div>
+      <div class="brand-title">KindleFlow</div>
+      <div class="brand-tag">PW 12th Gen</div>
+    </div>
+    <button class="icon-btn" id="btn-toggle-settings" title="Settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Settings Panel (Collapsible) -->
+  <div class="settings-panel" id="settings-panel">
+    <div class="form-group">
+      <label class="form-label">Google Gemini API Key (Free Tier)</label>
+      <input type="password" class="form-input" id="cfg-gemini-key" placeholder="AIzaSy...">
+      <div class="form-hint">Get a 100% free key from <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Kindle Delivery Email</label>
+      <input type="email" class="form-input" id="cfg-kindle-email" placeholder="your_name@kindle.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Sender Email (Whitelisted on Amazon)</label>
+      <input type="email" class="form-input" id="cfg-sender-email" placeholder="your_email@gmail.com">
+    </div>
+    <button class="btn-save" id="btn-save-settings">Save Settings</button>
+  </div>
+
+  <!-- Detected Article Card -->
+  <div class="article-card" id="article-card">
+    <div class="article-site" id="article-site">DETECTING PAGE...</div>
+    <div class="article-title" id="article-title">Analyzing page content...</div>
+    <div class="article-meta">
+      <span id="article-words">-- words</span>
+      <span>•</span>
+      <span id="article-images">-- images</span>
+    </div>
+  </div>
+
+  <!-- Live Progress Tracker -->
+  <div class="progress-box" id="progress-box">
+    <div class="progress-title">
+      <span>Pipeline Status</span>
+      <span id="progress-spinner">⏳</span>
+    </div>
+    <div class="steps">
+      <div class="step-item" id="step-extract">
+        <div class="step-circle">1</div>
+        <span>Extracting DOM & media</span>
+      </div>
+      <div class="step-item" id="step-gemini">
+        <div class="step-circle">2</div>
+        <span>Gemini filtering ads & charts</span>
+      </div>
+      <div class="step-item" id="step-package">
+        <div class="step-circle">3</div>
+        <span>Packaging Carta 1300 EPUB & Cover</span>
+      </div>
+      <div class="step-item" id="step-dispatch">
+        <div class="step-circle">4</div>
+        <span>Delivering to Kindle</span>
+      </div>
+    </div>
+    <div class="live-log" id="live-log">Ready.</div>
+  </div>
+
+  <!-- The Action Buttons -->
+  <div class="actions" id="actions-group">
+    <!-- Option 1: Send to Kindle (Direct Email) -->
+    <button class="btn btn-kindle" id="btn-send-kindle">
+      <span>📖 Send to Kindle</span>
+      <span class="btn-icon">⚡</span>
+    </button>
+
+    <!-- Option 2: Download Kindle EPUB (New!) -->
+    <button class="btn btn-secondary" id="btn-download-epub" style="border-color: rgba(198, 168, 105, 0.4); background: #202b3c;">
+      <span>📦 Download Kindle EPUB</span>
+      <span class="btn-icon">↓</span>
+    </button>
+
+    <!-- Option 3: Download Markdown -->
+    <button class="btn btn-secondary" id="btn-download-md">
+      <span>📝 Download Markdown</span>
+      <span class="btn-icon">↓</span>
+    </button>
+
+    <!-- Option 4: Download Clean HTML -->
+    <button class="btn btn-secondary" id="btn-download-html">
+      <span>🌐 Download Clean HTML</span>
+      <span class="btn-icon">↓</span>
+    </button>
+  </div>
+
+  <!-- Notification Toast -->
+  <div class="toast" id="toast-banner"></div>
+
+  <script src="libs/Readability.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
