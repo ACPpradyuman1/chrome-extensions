@@ -11,6 +11,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (stored.kindleEmail) document.getElementById("cfg-kindle-email").value = stored.kindleEmail;
   if (stored.senderEmail) document.getElementById("cfg-sender-email").value = stored.senderEmail;
 
+  // If settings not yet in Chrome storage, fetch from native host's local config
+  if (!stored.geminiApiKey) {
+    try {
+      const port = chrome.runtime.connectNative("com.kindleflow.host");
+      port.onMessage.addListener((msg) => {
+        if (msg.step === "config" && msg.geminiApiKey) {
+          chrome.storage.local.set({
+            geminiApiKey: msg.geminiApiKey,
+            kindleEmail: msg.kindleEmail || "",
+            senderEmail: msg.senderEmail || ""
+          });
+          const keyInput = document.getElementById("cfg-gemini-key");
+          if (keyInput) keyInput.value = msg.geminiApiKey;
+          const kindleInput = document.getElementById("cfg-kindle-email");
+          if (kindleInput) kindleInput.value = msg.kindleEmail || "";
+          const senderInput = document.getElementById("cfg-sender-email");
+          if (senderInput) senderInput.value = msg.senderEmail || "";
+        }
+        port.disconnect();
+      });
+      port.postMessage({ action: "get_config" });
+    } catch (e) {}
+  }
+
   // Mode Toggle (Google AI vs Direct Offline)
   const toggleGemini = document.getElementById("toggle-gemini");
   const modeTitle = document.getElementById("mode-title");
@@ -48,6 +72,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     const kEmail = document.getElementById("cfg-kindle-email").value.trim();
     const sEmail = document.getElementById("cfg-sender-email").value.trim();
     await chrome.storage.local.set({ geminiApiKey: key, kindleEmail: kEmail, senderEmail: sEmail });
+    try {
+      const port = chrome.runtime.connectNative("com.kindleflow.host");
+      port.postMessage({
+        action: "save_config",
+        geminiApiKey: key,
+        kindleEmail: kEmail,
+        senderEmail: sEmail
+      });
+      setTimeout(() => port.disconnect(), 500);
+    } catch (e) {}
     showToast("Settings saved successfully!", "success");
     document.getElementById("settings-panel").style.display = "none";
   });

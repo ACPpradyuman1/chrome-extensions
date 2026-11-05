@@ -98,10 +98,11 @@ Return ONLY the clean Markdown text. Do NOT wrap your entire answer in ```markdo
         }
     }
 
-    # Try supported models in priority order
-    candidate_models = ["gemini-flash-lite-latest", "gemini-flash-latest", "gemini-3.8-flash"]
+    # High-reliability models in priority order
+    candidate_models = ["gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-3.5-flash-lite"]
     last_err = None
 
+    import time
     for model in candidate_models:
         endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
         req = urllib.request.Request(
@@ -110,25 +111,36 @@ Return ONLY the clean Markdown text. Do NOT wrap your entire answer in ```markdo
             headers={'Content-Type': 'application/json'}
         )
 
-        try:
-            with urllib.request.urlopen(req, timeout=25) as resp:
-                result = json.loads(resp.read().decode('utf-8'))
-                candidates = result.get("candidates", [])
-                if candidates and "content" in candidates[0]:
-                    parts = candidates[0]["content"].get("parts", [])
-                    if parts and "text" in parts[0]:
-                        cleaned = parts[0]["text"].strip()
-                        # Remove outer fences if model returned them
-                        if cleaned.startswith("```markdown"):
-                            cleaned = cleaned[11:].strip()
-                        if cleaned.startswith("```"):
-                            cleaned = cleaned[3:].strip()
-                        if cleaned.endswith("```"):
-                            cleaned = cleaned[:-3].strip()
-                        return cleaned
-        except Exception as e:
-            last_err = e
-            continue
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=40) as resp:
+                    result = json.loads(resp.read().decode('utf-8'))
+                    candidates = result.get("candidates", [])
+                    if candidates and "content" in candidates[0]:
+                        parts = candidates[0]["content"].get("parts", [])
+                        if parts and "text" in parts[0]:
+                            cleaned = parts[0]["text"].strip()
+                            # Remove outer fences if model returned them
+                            if cleaned.startswith("```markdown"):
+                                cleaned = cleaned[11:].strip()
+                            if cleaned.startswith("```"):
+                                cleaned = cleaned[3:].strip()
+                            if cleaned.endswith("```"):
+                                cleaned = cleaned[:-3].strip()
+                            return cleaned
+            except urllib.error.HTTPError as e:
+                last_err = e
+                # Transient 503 (high demand) or 429: wait and retry
+                if e.code in (503, 429) and attempt < 2:
+                    time.sleep(1.5 * (attempt + 1))
+                    continue
+                break
+            except Exception as e:
+                last_err = e
+                if attempt < 2:
+                    time.sleep(1.0)
+                    continue
+                break
 
     raise Exception(f"Gemini API request failed across models: {last_err}")
 
@@ -290,6 +302,46 @@ def main():
         return
 
     action = payload.get("action", "kindle")
+
+    # Handle configuration requests from extension
+    if action == "get_config":
+        cfg = {}
+        try:
+            cfg_path = os.path.expanduser("~/.config/kindle/config.json")
+            if os.path.exists(cfg_path):
+                with open(cfg_path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+        except Exception:
+            pass
+        send_message({
+            "step": "config",
+            "geminiApiKey": cfg.get("gemini_api_key", ""),
+            "kindleEmail": cfg.get("kindle_email", ""),
+            "senderEmail": cfg.get("sender_email", "")
+        })
+        return
+
+    if action == "save_config":
+        cfg_path = os.path.expanduser("~/.config/kindle/config.json")
+        os.makedirs(os.path.dirname(cfg_path), exist_ok=True)
+        cfg = {}
+        if os.path.exists(cfg_path):
+            try:
+                with open(cfg_path, "r", encoding="utf-8") as f:
+                    cfg = json.load(f)
+            except Exception:
+                pass
+        if "geminiApiKey" in payload: cfg["gemini_api_key"] = payload["geminiApiKey"].strip()
+        if "kindleEmail" in payload: cfg["kindle_email"] = payload["kindleEmail"].strip()
+        if "senderEmail" in payload: cfg["sender_email"] = payload["senderEmail"].strip()
+        try:
+            with open(cfg_path, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, indent=2)
+            send_message({"step": "done", "message": "Settings saved successfully."})
+        except Exception as e:
+            send_message({"step": "error", "message": f"Failed to save settings: {e}"})
+        return
+
     title = payload.get("title", "Saved Article").strip()
     byline = payload.get("byline", "").strip()
     subtitle = payload.get("subtitle", "").strip()
