@@ -6,13 +6,13 @@ A curated collection of focused, lightweight Chrome extensions built on Manifest
 
 ## Directory Index
 
-| Extension | Summary | Key Capabilities | Documentation |
-|---|---|---|---|
-| [kindleflow-extension](kindleflow-extension) | Clean Reader & Kindle Publisher | Gemini AI ad-stripping, diagram preservation, 300 PPI Paperwhite styling, SMTP & direct EPUB 3 export | [Read Guide](kindleflow-extension/README.md) |
-| [site-blocker](site-blocker) | Simple Site Blocker | Network-level domain blocking via `declarativeNetRequest` with custom interstitial page | [Read Guide](site-blocker/README.md) |
-| [tab-renamer](tab-renamer) | Custom Tab Renamer | Custom tab titles with MutationObserver protection against SPA overwrites and session recovery | [Read Guide](tab-renamer/README.md) |
-| [wa-cleaner](wa-cleaner) | WhatsApp Web Bulk Deleter | Keyword-targeted message scanning, back-scrolling history loader, and automated message deletion | [Read Guide](wa-cleaner/README.md) |
-| [wl-cleaner](wl-cleaner) | YouTube Watch Later Cleaner | In-page checkboxes, duration analytics, auto-scrolling loader, and automated playlist cleaning | [Read Guide](wl-cleaner/README.md) |
+| Extension | Version | Summary | Key Capabilities | Documentation |
+|---|---|---|---|---|
+| [kindleflow-extension](kindleflow-extension) | `v1.1.0` | Clean Reader & Kindle Publisher | Gemini 3.1 Flash-Lite, Mozilla Readability, 300 PPI Paperwhite styling, direct clean export, SMTP & EPUB 3 | [Read Guide](kindleflow-extension/README.md) |
+| [site-blocker](site-blocker) | `v1.0.0` | Simple Site Blocker | Network-level domain blocking via `declarativeNetRequest` with custom interstitial page | [Read Guide](site-blocker/README.md) |
+| [tab-renamer](tab-renamer) | `v1.0.0` | Custom Tab Renamer | Custom tab titles with MutationObserver protection against SPA overwrites and session recovery | [Read Guide](tab-renamer/README.md) |
+| [wa-cleaner](wa-cleaner) | `v1.0.0` | WhatsApp Web Bulk Deleter | Keyword-targeted message scanning, back-scrolling history loader, and automated message deletion | [Read Guide](wa-cleaner/README.md) |
+| [wl-cleaner](wl-cleaner) | `v1.0.0` | YouTube Watch Later Cleaner | In-page checkboxes, duration analytics, auto-scrolling loader, and automated playlist cleaning | [Read Guide](wl-cleaner/README.md) |
 
 ---
 

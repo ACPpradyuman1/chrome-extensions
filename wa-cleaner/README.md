@@ -2,6 +2,8 @@
 
 A Chrome extension (Manifest V3) that provides automated, keyword-targeted bulk deletion of messages on WhatsApp Web.
 
+**Version:** 1.0.0 • **Manifest:** V3
+
 ---
 
 ## Features

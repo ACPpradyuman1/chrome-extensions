@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tab Renamer",
-  "version": "1.0",
+  "version": "1.0.0",
   "description": "Give any tab a custom title.",
   "permissions": ["storage", "scripting", "tabs"],
   "host_permissions": ["<all_urls>"],

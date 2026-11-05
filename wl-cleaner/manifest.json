@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Watch Later Cleaner",
-  "version": "1.0",
+  "version": "1.0.0",
   "description": "Select and bulk-remove videos from your YouTube Watch Later playlist.",
   "permissions": ["storage"],
   "host_permissions": ["https://www.youtube.com/*"],

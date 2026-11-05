@@ -2,6 +2,8 @@
 
 > Transform web articles, deep-dives, and documentation into publication-grade Kindle e-books, clean Markdown, or distraction-free HTML.
 
+**Version:** 1.1.0 • **Manifest:** V3 • **Kindle Target:** Paperwhite (12th Gen Carta 1300 / 300 PPI)
+
 KindleFlow is an open-source Chrome extension (Manifest V3) paired with an on-demand Python native host. It combines Mozilla Readability with Google Gemini AI to strip ads, sponsored blocks, and junk while strictly preserving informative diagrams, charts, infographics, and technical tables. The result is compiled into high-contrast e-books tuned specifically for Kindle Paperwhite (12th Gen Carta 1300 / 300 PPI) and modern e-readers.
 
 ---

@@ -2,6 +2,8 @@
 
 A lightweight, distraction-free Chrome extension (Manifest V3) to block user-specified websites using the Chrome declarativeNetRequest API.
 
+**Version:** 1.0.0 • **Manifest:** V3
+
 ---
 
 ## Features

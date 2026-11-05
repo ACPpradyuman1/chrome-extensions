@@ -2,6 +2,8 @@
 
 A Chrome extension (Manifest V3) to select, calculate watch time for, and bulk-remove videos from your YouTube Watch Later playlist.
 
+**Version:** 1.0.0 • **Manifest:** V3
+
 ---
 
 ## Features

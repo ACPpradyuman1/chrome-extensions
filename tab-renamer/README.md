@@ -2,6 +2,8 @@
 
 A Chrome extension (Manifest V3) that allows you to assign custom, persistent titles to any browser tab.
 
+**Version:** 1.0.0 • **Manifest:** V3
+
 ---
 
 ## Features
