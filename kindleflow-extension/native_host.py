@@ -132,8 +132,69 @@ Return ONLY the clean Markdown text. Do NOT wrap your entire answer in ```markdo
 
     raise Exception(f"Gemini API request failed across models: {last_err}")
 
-def fallback_local_clean(title, text_content, url, hostname):
-    """Fallback cleaner if Gemini API key is not provided."""
+def fallback_local_clean(title, html, text_content, url, hostname, byline="", subtitle="", lead_image=""):
+    """Converts clean HTML into structured Markdown without external AI."""
+    if html and html.strip():
+        try:
+            import lxml.html
+            doc = lxml.html.fromstring(html)
+
+            # Strip any lingering unwanted nodes
+            for tag in doc.xpath('//script | //style | //noscript | //iframe | //svg | //button | //input | //form'):
+                try: tag.drop_tree()
+                except Exception: pass
+
+            def walk(node):
+                tag = node.tag.lower() if isinstance(node.tag, str) else ''
+                text = (node.text or '').strip()
+                tail = (node.tail or '').strip()
+
+                children_md = ''.join([walk(c) for c in node.iterchildren() if isinstance(c.tag, str)])
+                inner = (text + ' ' + children_md).strip()
+
+                if tag == 'h1': res = f'\n\n# {inner}\n\n'
+                elif tag == 'h2': res = f'\n\n## {inner}\n\n'
+                elif tag == 'h3': res = f'\n\n### {inner}\n\n'
+                elif tag == 'h4': res = f'\n\n#### {inner}\n\n'
+                elif tag in ['h5', 'h6']: res = f'\n\n##### {inner}\n\n'
+                elif tag == 'p': res = f'\n\n{inner}\n\n'
+                elif tag == 'blockquote': res = f'\n\n> {inner}\n\n'
+                elif tag == 'li': res = f'- {inner}\n'
+                elif tag in ['ul', 'ol']: res = f'\n\n{inner}\n\n'
+                elif tag in ['strong', 'b']: res = f'**{inner}**'
+                elif tag in ['em', 'i']: res = f'*{inner}*'
+                elif tag == 'a':
+                    href = node.get('href', '')
+                    res = f'[{inner}]({href})' if href and not href.startswith('javascript:') and inner else inner
+                elif tag == 'img':
+                    src = node.get('src') or node.get('data-src') or ''
+                    alt = node.get('alt') or 'Figure'
+                    lsrc = src.lower()
+                    if not src or any(k in lsrc for k in ['divider', 'icon', 'pixel', 'tracker', 'loading', 'logo']):
+                        res = ''
+                    else:
+                        res = f'\n\n![{alt}]({src})\n\n'
+                elif tag == 'br': res = '\n'
+                elif tag == 'hr': res = '\n\n---\n\n'
+                else: res = inner
+
+                if tail: res += ' ' + tail
+                return res
+
+            body = ''.join([walk(c) for c in doc.iterchildren() if isinstance(c.tag, str)])
+            body = re.sub(r'\n{3,}', '\n\n', body).strip()
+
+            header = f'# {title}\n\n'
+            if subtitle: header += f'*{subtitle}*\n\n'
+            if byline: header += f'**By {byline}** • *{hostname}*\n\n'
+            if lead_image and lead_image not in body:
+                header += f'![{title}]({lead_image})\n\n'
+
+            return header + body
+        except Exception:
+            pass
+
+    # Heuristic line filtering if HTML parsing fails
     lines = [line.strip() for line in text_content.split('\n') if line.strip()]
     filtered = []
     bad_terms = ["subscribe", "cookie", "advertisement", "share on twitter", "sign up", "terms of use", "privacy policy"]
@@ -144,7 +205,10 @@ def fallback_local_clean(title, text_content, url, hostname):
         filtered.append(l)
 
     body = "\n\n".join(filtered)
-    return f"# {title}\n\n*Source: [{hostname}]({url})*\n\n{body}"
+    header = f"# {title}\n\n"
+    if byline: header += f"**By {byline}** • "
+    header += f"*Source: [{hostname}]({url})*\n\n"
+    return header + body
 
 def download_and_localize_images(md_text, target_dir, source_url=""):
     """
@@ -227,6 +291,9 @@ def main():
 
     action = payload.get("action", "kindle")
     title = payload.get("title", "Saved Article").strip()
+    byline = payload.get("byline", "").strip()
+    subtitle = payload.get("subtitle", "").strip()
+    lead_image = payload.get("leadImage", "").strip()
     url = payload.get("url", "")
     hostname = payload.get("hostname", "")
     html = payload.get("html", "")
@@ -262,8 +329,8 @@ def main():
                 import generate_cover
                 return generate_cover.generate_cover(
                     title=title,
-                    subtitle=f"Article from {hostname}",
-                    author=hostname or "KindleFlow",
+                    subtitle=subtitle or f"Article from {hostname}",
+                    author=byline or hostname or "KindleFlow",
                     output_path=cover_path,
                     theme="slate_gold"
                 )
@@ -277,7 +344,7 @@ def main():
     # 1. Step: Content Structuring (Gemini AI or Direct Offline Cleaner)
     if skip_gemini:
         send_message({"step": "gemini", "message": "Direct mode: bypassing Google AI processing, using local clean parser..."})
-        cleaned_md = fallback_local_clean(title, text_content, url, hostname)
+        cleaned_md = fallback_local_clean(title, html, text_content, url, hostname, byline, subtitle, lead_image)
     else:
         send_message({"step": "gemini", "message": "Gemini analyzing content & filtering ads/diagrams..."})
         try:
@@ -286,10 +353,10 @@ def main():
                 send_message({"step": "gemini", "message": "Gemini successfully structured article & kept relevant diagrams."})
             else:
                 send_message({"step": "gemini", "message": "No API key found. Using local heuristic cleaner (add Gemini key in Settings for AI cleaning)."})
-                cleaned_md = fallback_local_clean(title, text_content, url, hostname)
+                cleaned_md = fallback_local_clean(title, html, text_content, url, hostname, byline, subtitle, lead_image)
         except Exception as e:
             send_message({"step": "gemini", "message": f"Gemini notice ({e}). Falling back to local cleaner..."})
-            cleaned_md = fallback_local_clean(title, text_content, url, hostname)
+            cleaned_md = fallback_local_clean(title, html, text_content, url, hostname, byline, subtitle, lead_image)
 
     # Handle Markdown Download Action
     if action == "markdown":

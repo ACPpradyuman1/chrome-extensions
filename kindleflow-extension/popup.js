@@ -120,9 +120,9 @@ async function analyzeActiveTab() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     currentTab = tab;
 
-    if (!tab || !tab.url || tab.url.startsWith("chrome://")) {
+    if (!tab || !tab.url || tab.url.startsWith("chrome://") || tab.url.startsWith("edge://") || tab.url.startsWith("about:")) {
       document.getElementById("article-site").textContent = "RESTRICTED PAGE";
-      document.getElementById("article-title").textContent = "Cannot clip internal Chrome pages. Navigate to any article or website.";
+      document.getElementById("article-title").textContent = "Cannot clip internal browser pages. Navigate to any article or website.";
       disableButtons(true);
       return;
     }
@@ -130,7 +130,17 @@ async function analyzeActiveTab() {
     const domain = new URL(tab.url).hostname.replace(/^www\./, "");
     document.getElementById("article-site").textContent = domain;
 
-    // Inject extraction script into active tab
+    // First inject Mozilla Readability into the active tab
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["libs/Readability.js"]
+      });
+    } catch (injectErr) {
+      console.warn("Readability injection notice:", injectErr);
+    }
+
+    // Run extraction logic inside tab
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: extractPageDataInTab
@@ -156,54 +166,158 @@ async function analyzeActiveTab() {
 
 // Executed inside active tab
 function extractPageDataInTab() {
-  const title = document.title || "";
   const url = window.location.href;
   const hostname = window.location.hostname;
+  let title = document.title || "";
+  let byline = "";
+  let subtitle = "";
+  let leadImage = "";
 
-  const imgElements = Array.from(document.querySelectorAll("img, picture img"));
+  // 1. Extract metadata before DOM manipulation
+  try {
+    const metaTitle = document.querySelector('meta[property="og:title"], meta[name="twitter:title"]');
+    if (metaTitle && metaTitle.content) title = metaTitle.content.trim();
+
+    const metaAuthor = document.querySelector('meta[name="author"], meta[property="article:author"], meta[name="twitter:creator"], .nws-author, .author, .byline, [rel="author"]');
+    if (metaAuthor) {
+      byline = metaAuthor.content || metaAuthor.innerText || "";
+      byline = byline.replace(/^by\s+/i, "").trim();
+    }
+
+    const metaSub = document.querySelector('.nws-strap, .article-strap, .subtitle, .entry-subtitle, meta[name="description"], meta[property="og:description"]');
+    if (metaSub) {
+      subtitle = (metaSub.innerText || metaSub.content || "").trim();
+    }
+
+    const leadImgEl = document.querySelector('.nws-single-featured-img, .featured-image img, .hero-image img, .hero img, .article-hero img, [data-hero] img, meta[property="og:image"]');
+    if (leadImgEl) {
+      let src = leadImgEl.content || leadImgEl.currentSrc || leadImgEl.src || leadImgEl.getAttribute('data-src') || "";
+      if (src && !src.startsWith("data:") && src.length > 5) {
+        try { leadImage = new URL(src, window.location.href).href; } catch(e) { leadImage = src; }
+      }
+    }
+  } catch (e) {}
+
+  // 2. Clone document for clean pruning
+  const docClone = document.cloneNode(true);
+
+  // 3. Remove all known site chrome, modals, navigation, comments, and recommendation carousels
+  const junkSelectors = [
+    'script', 'style', 'noscript', 'iframe', 'input', 'button', 'form', 'select', 'textarea',
+    'nav', 'footer', 'aside',
+    '.modal', '[role="dialog"]', '[aria-modal="true"]', '[aria-hidden="true"]', '.popup', '.overlay',
+    '.explore-panel-container', '.explore-second-panel-container',
+    '.comment-panel-container', '.comments', '.comment-container', '[class*="comment-"]', '[id*="comment"]',
+    '.story-homepage-container', '#newsletter-recommendation-container',
+    '[class*="recommendation"]', '[id*="recommendation"]',
+    '[class*="related-"]', '[id*="related-"]', '[class*="recirc"]', '[class*="read-next"]',
+    '[class*="share-"]', '[class*="social-share"]',
+    '#corporate_ip_details',
+    '.email-nudge-container', '[role="bfo-web-hide"]', '.footer-link', '.footer-logo',
+    '.email-header-3', '.newsletter-callout', '.whitelisting-modal'
+  ];
+
+  for (const sel of junkSelectors) {
+    try {
+      docClone.querySelectorAll(sel).forEach(el => el.remove());
+    } catch(e) {}
+  }
+
+  // Remove elements with inline display:none or hidden attribute
+  try {
+    docClone.querySelectorAll('*').forEach(el => {
+      const style = el.getAttribute('style') || '';
+      const s = style.toLowerCase().replace(/\s+/g, '');
+      if (s.includes('display:none') || s.includes('visibility:hidden') || el.hasAttribute('hidden')) {
+        el.remove();
+      }
+    });
+  } catch(e) {}
+
+  // 4. Run Mozilla Readability on the sanitized clone
+  let article = null;
+  if (typeof Readability !== "undefined") {
+    try {
+      const reader = new Readability(docClone, {
+        keepClasses: false,
+        charThreshold: 150
+      });
+      article = reader.parse();
+    } catch (e) {
+      console.warn("Readability parse error:", e);
+    }
+  }
+
+  let cleanHtml = "";
+  let textContent = "";
+
+  if (article && article.content && article.content.trim().length > 200) {
+    title = article.title || title;
+    byline = article.byline || byline;
+    cleanHtml = article.content;
+    textContent = article.textContent || "";
+  } else {
+    // Robust fallback if Readability yields nothing
+    const mainEl = docClone.querySelector('.db-post-content, .content-wrapper, .entry-content, .post-content, .article-content, .article__content, .article-body, .story-content, main, [role="main"]') || docClone.body;
+    cleanHtml = mainEl ? mainEl.innerHTML : "";
+    textContent = mainEl ? (mainEl.innerText || mainEl.textContent || "") : "";
+  }
+
+  // Post-clean: Ensure no lingering promo paywalls or empty headers in cleanHtml
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = cleanHtml;
+  tempDiv.querySelectorAll('.email-nudge-container, [role="bfo-web-hide"], .footer-link, .footer-logo, .newsletter-callout, .whitelisting-modal').forEach(el => el.remove());
+  cleanHtml = tempDiv.innerHTML;
+  textContent = tempDiv.innerText || textContent;
+
+  // 5. Extract images strictly from the clean article body
   const images = [];
   const seenSrcs = new Set();
 
+  if (leadImage && !leadImage.includes("default") && !leadImage.includes("logo") && !leadImage.includes("icon")) {
+    seenSrcs.add(leadImage);
+    images.push({
+      src: leadImage,
+      alt: title,
+      title: title,
+      width: 1200,
+      height: 675
+    });
+  }
+
+  const imgElements = Array.from(tempDiv.querySelectorAll("img, picture img"));
   for (const img of imgElements) {
     let src = img.currentSrc || img.src || img.getAttribute("data-src") || img.getAttribute("data-original") || img.getAttribute("data-lazy-src") || img.getAttribute("data-highres");
     if (!src || src.startsWith("data:") || src.length < 5) continue;
 
-    // Ensure absolute URL
-    if (!src.startsWith("http://") && !src.startsWith("https://")) {
-      try { src = new URL(src, window.location.href).href; } catch(e) {}
+    try { src = new URL(src, window.location.href).href; } catch(e) {}
+
+    const lowerSrc = src.toLowerCase();
+    if (lowerSrc.includes("divider") || lowerSrc.includes("icon") || lowerSrc.includes("pixel") || lowerSrc.includes("tracker") || lowerSrc.includes("loader")) {
+      continue;
     }
 
     if (seenSrcs.has(src)) continue;
     seenSrcs.add(src);
 
-    const rect = img.getBoundingClientRect();
-    const width = img.naturalWidth || rect.width || 0;
-    const height = img.naturalHeight || rect.height || 0;
-
-    // Discard tiny icons / tracking pixels (< 80px)
-    if (width > 0 && height > 0 && (width < 80 || height < 80)) continue;
-
     images.push({
       src: src,
       alt: img.alt || "",
       title: img.title || "",
-      width: Math.round(width),
-      height: Math.round(height)
+      width: parseInt(img.width) || 800,
+      height: parseInt(img.height) || 600
     });
-  }
-
-  // Broad article selector covering WordPress, Substack, Medium, Ghost, News sites
-  let mainEl = document.querySelector("article, [role='main'], main, .post-content, .article-content, .article-body, .article__content, .entry-content, .story-body, #content, .content, .single-post");
-  if (!mainEl || (mainEl.innerText && mainEl.innerText.trim().length < 300)) {
-    mainEl = document.body;
   }
 
   return {
     title: title,
+    byline: byline,
+    subtitle: subtitle,
+    leadImage: leadImage,
     url: url,
     hostname: hostname,
-    html: mainEl.innerHTML,
-    textContent: mainEl.innerText || "",
+    html: cleanHtml,
+    textContent: textContent,
     images: images
   };
 }
@@ -249,7 +363,15 @@ async function handleAction(actionType) {
 
   // Direct offline export for Markdown and HTML (Zero Google processing)
   if (!isGeminiActive && actionType === "markdown") {
-    const md = htmlToCleanMarkdown(currentArticle.html, currentArticle.title, currentArticle.url, currentArticle.hostname);
+    const md = htmlToCleanMarkdown(
+      currentArticle.html,
+      currentArticle.title,
+      currentArticle.url,
+      currentArticle.hostname,
+      currentArticle.byline,
+      currentArticle.subtitle,
+      currentArticle.leadImage
+    );
     const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
     const downloadUrl = URL.createObjectURL(blob);
     const filename = `${sanitizeSlug(currentArticle.title)}.md`;
@@ -259,7 +381,15 @@ async function handleAction(actionType) {
   }
 
   if (!isGeminiActive && actionType === "html") {
-    const cleanHtml = generateCleanHtmlDoc(currentArticle.html, currentArticle.title, currentArticle.url, currentArticle.hostname);
+    const cleanHtml = generateCleanHtmlDoc(
+      currentArticle.html,
+      currentArticle.title,
+      currentArticle.url,
+      currentArticle.hostname,
+      currentArticle.byline,
+      currentArticle.subtitle,
+      currentArticle.leadImage
+    );
     const blob = new Blob([cleanHtml], { type: "text/html;charset=utf-8" });
     const downloadUrl = URL.createObjectURL(blob);
     const filename = `${sanitizeSlug(currentArticle.title)}.html`;
@@ -283,6 +413,9 @@ async function handleAction(actionType) {
   const payload = {
     action: actionType,
     title: currentArticle.title,
+    byline: currentArticle.byline,
+    subtitle: currentArticle.subtitle,
+    leadImage: currentArticle.leadImage,
     url: currentArticle.url,
     hostname: currentArticle.hostname,
     html: currentArticle.html,
@@ -326,7 +459,7 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
-function htmlToCleanMarkdown(html, title, url, hostname) {
+function htmlToCleanMarkdown(html, title, url, hostname, byline = "", subtitle = "", leadImage = "") {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
 
@@ -339,7 +472,7 @@ function htmlToCleanMarkdown(html, title, url, hostname) {
 
     const tag = node.tagName.toLowerCase();
 
-    if (["script", "style", "noscript", "svg", "button", "nav", "footer"].includes(tag)) {
+    if (["script", "style", "noscript", "svg", "button", "nav", "footer", "form", "input", "select", "textarea"].includes(tag)) {
       return "";
     }
 
@@ -360,19 +493,23 @@ function htmlToCleanMarkdown(html, title, url, hostname) {
           : `\`${children.trim()}\``;
       case "pre": return `\n\n\`\`\`\n${node.textContent.trim()}\n\`\`\`\n\n`;
       case "blockquote": return `\n\n> ${children.trim().replace(/\n/g, "\n> ")}\n\n`;
-      case "ul": return `\n\n${children}\n\n`;
-      case "ol": return `\n\n${children}\n\n`;
+      case "ul": case "ol": return `\n\n${children}\n\n`;
       case "li": return `- ${children.trim()}\n`;
       case "hr": return `\n\n---\n\n`;
       case "br": return `\n`;
       case "a": {
         const href = node.getAttribute("href");
-        return href && children.trim() ? `[${children.trim()}](${href})` : children;
+        if (!href || href.startsWith("javascript:")) return children.trim();
+        return children.trim() ? `[${children.trim()}](${href})` : children;
       }
       case "img": {
-        const src = node.getAttribute("src") || node.getAttribute("data-src");
-        const alt = node.getAttribute("alt") || "Image";
-        return src ? `\n\n![${alt}](${src})\n\n` : "";
+        const src = node.getAttribute("src") || node.getAttribute("data-src") || "";
+        const alt = node.getAttribute("alt") || "Figure";
+        const lsrc = src.toLowerCase();
+        if (!src || lsrc.includes("divider") || lsrc.includes("icon") || lsrc.includes("pixel") || lsrc.includes("tracker")) {
+          return "";
+        }
+        return `\n\n![${alt}](${src})\n\n`;
       }
       default:
         return children;
@@ -381,12 +518,40 @@ function htmlToCleanMarkdown(html, title, url, hostname) {
 
   let bodyMd = walk(doc.body).replace(/\n{3,}/g, "\n\n").trim();
   const dateStr = new Date().toISOString().split("T")[0];
-  const frontmatter = `---\ntitle: "${(title || "").replace(/"/g, '\\"')}"\nsource: "${url}"\nsite: "${hostname}"\ndate: "${dateStr}"\ncleaner: "KindleFlow Direct (Offline)"\n---\n\n`;
-  return frontmatter + `# ${title}\n\n` + bodyMd;
+
+  const frontmatter = [
+    "---",
+    `title: "${(title || "").replace(/"/g, '\\"')}"`,
+    byline ? `author: "${(byline || "").replace(/"/g, '\\"')}"` : null,
+    `source: "${url}"`,
+    `site: "${hostname}"`,
+    `date: "${dateStr}"`,
+    'cleaner: "KindleFlow Direct (Offline)"',
+    "---\n\n"
+  ].filter(Boolean).join("\n");
+
+  let headerMd = `# ${title}\n\n`;
+  if (subtitle) headerMd += `*${subtitle}*\n\n`;
+  if (byline) headerMd += `**By ${byline}** • *${hostname}*\n\n`;
+
+  // Prepend lead hero image if not already inside the body markdown
+  if (leadImage && !bodyMd.includes(leadImage)) {
+    headerMd += `![${title}](${leadImage})\n\n`;
+  }
+
+  return frontmatter + headerMd + bodyMd;
 }
 
-function generateCleanHtmlDoc(cleanBodyHtml, title, url, hostname) {
+function generateCleanHtmlDoc(cleanBodyHtml, title, url, hostname, byline = "", subtitle = "", leadImage = "") {
   const dateStr = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  const bylineHtml = byline ? `By <strong>${escapeHtml(byline)}</strong> • ` : '';
+  const subtitleHtml = subtitle ? `<p class="subtitle" style="font-size: 1.15rem; color: #555; margin-bottom: 14px; line-height: 1.5; font-style: italic;">${escapeHtml(subtitle)}</p>` : '';
+
+  const hasLeadInBody = leadImage && cleanBodyHtml.includes(leadImage);
+  const leadImgHtml = (leadImage && !hasLeadInBody)
+    ? `<figure class="lead-figure" style="margin: 20px 0;"><img src="${escapeHtml(leadImage)}" alt="${escapeHtml(title)}" style="width: 100%; border-radius: 6px; display: block;" /></figure>`
+    : '';
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -427,7 +592,7 @@ function generateCleanHtmlDoc(cleanBodyHtml, title, url, hostname) {
       display: block;
     }
     article p { margin-bottom: 1.4em; font-size: 1.08rem; }
-    article h2, article h3 { margin-top: 1.6em; margin-bottom: 0.6em; }
+    article h2, article h3, article h4 { margin-top: 1.6em; margin-bottom: 0.6em; color: #222; }
     article blockquote {
       border-left: 3px solid #c6a869;
       margin: 20px 0;
@@ -451,12 +616,14 @@ function generateCleanHtmlDoc(cleanBodyHtml, title, url, hostname) {
 <body>
   <header>
     <h1>${escapeHtml(title)}</h1>
+    ${subtitleHtml}
     <div class="meta">
-      Published from <strong>${escapeHtml(hostname)}</strong> • Saved on ${dateStr} • 
+      ${bylineHtml}Published from <strong>${escapeHtml(hostname)}</strong> • Saved on ${dateStr} • 
       <a href="${escapeHtml(url)}" target="_blank" rel="noopener">Original Article</a>
     </div>
   </header>
   <article>
+    ${leadImgHtml}
     ${cleanBodyHtml}
   </article>
 </body>
