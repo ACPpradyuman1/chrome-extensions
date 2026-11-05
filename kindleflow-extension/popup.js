@@ -6,10 +6,35 @@ let currentTab = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Load saved settings
-  const stored = await chrome.storage.local.get(["geminiApiKey", "kindleEmail", "senderEmail"]);
+  const stored = await chrome.storage.local.get(["geminiApiKey", "kindleEmail", "senderEmail", "useGemini"]);
   if (stored.geminiApiKey) document.getElementById("cfg-gemini-key").value = stored.geminiApiKey;
   if (stored.kindleEmail) document.getElementById("cfg-kindle-email").value = stored.kindleEmail;
   if (stored.senderEmail) document.getElementById("cfg-sender-email").value = stored.senderEmail;
+
+  // Mode Toggle (Google AI vs Direct Offline)
+  const toggleGemini = document.getElementById("toggle-gemini");
+  const modeTitle = document.getElementById("mode-title");
+  const modeDesc = document.getElementById("mode-desc");
+
+  function updateModeUI(enabled) {
+    toggleGemini.checked = enabled;
+    if (enabled) {
+      modeTitle.textContent = "Google AI Processing";
+      modeDesc.textContent = "Ad stripping, key takeaways & charts";
+    } else {
+      modeTitle.textContent = "Direct Clean Mode";
+      modeDesc.textContent = "Zero Google processing • 100% offline";
+    }
+  }
+
+  const isGeminiActive = stored.useGemini !== false; // Default: true
+  updateModeUI(isGeminiActive);
+
+  toggleGemini.addEventListener("change", async () => {
+    const active = toggleGemini.checked;
+    await chrome.storage.local.set({ useGemini: active });
+    updateModeUI(active);
+  });
 
   // Toggle Settings Panel
   document.getElementById("btn-toggle-settings").addEventListener("click", () => {
@@ -220,6 +245,29 @@ async function handleAction(actionType) {
     return;
   }
 
+  const isGeminiActive = document.getElementById("toggle-gemini").checked;
+
+  // Direct offline export for Markdown and HTML (Zero Google processing)
+  if (!isGeminiActive && actionType === "markdown") {
+    const md = htmlToCleanMarkdown(currentArticle.html, currentArticle.title, currentArticle.url, currentArticle.hostname);
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const downloadUrl = URL.createObjectURL(blob);
+    const filename = `${sanitizeSlug(currentArticle.title)}.md`;
+    chrome.downloads.download({ url: downloadUrl, filename: filename, saveAs: false });
+    showToast("Downloaded clean Markdown without Google processing!", "success");
+    return;
+  }
+
+  if (!isGeminiActive && actionType === "html") {
+    const cleanHtml = generateCleanHtmlDoc(currentArticle.html, currentArticle.title, currentArticle.url, currentArticle.hostname);
+    const blob = new Blob([cleanHtml], { type: "text/html;charset=utf-8" });
+    const downloadUrl = URL.createObjectURL(blob);
+    const filename = `${sanitizeSlug(currentArticle.title)}.html`;
+    chrome.downloads.download({ url: downloadUrl, filename: filename, saveAs: false });
+    showToast("Downloaded clean HTML without Google processing!", "success");
+    return;
+  }
+
   const stored = await chrome.storage.local.get(["geminiApiKey", "kindleEmail", "senderEmail"]);
   const apiKey = (stored.geminiApiKey || "").trim();
 
@@ -230,7 +278,7 @@ async function handleAction(actionType) {
 
   setProgressStep("extract", "completed");
   setProgressStep("gemini", "active");
-  updateLog("Delegating task to background worker...");
+  updateLog(isGeminiActive ? "Delegating task to background worker..." : "Packaging offline EPUB in background...");
 
   const payload = {
     action: actionType,
@@ -241,6 +289,7 @@ async function handleAction(actionType) {
     textContent: currentArticle.textContent,
     images: currentArticle.images,
     geminiApiKey: apiKey,
+    skipGemini: !isGeminiActive,
     kindleEmail: (stored.kindleEmail || "").trim(),
     senderEmail: (stored.senderEmail || "").trim()
   };
@@ -257,4 +306,159 @@ async function handleAction(actionType) {
       document.getElementById("actions-group").style.opacity = "1";
     }
   });
+}
+
+function sanitizeSlug(text) {
+  return (text || "article")
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/[-\s]+/g, "-")
+    .slice(0, 45);
+}
+
+function escapeHtml(str) {
+  return (str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function htmlToCleanMarkdown(html, title, url, hostname) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+
+  function walk(node) {
+    if (!node) return "";
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent.replace(/\s+/g, " ");
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return "";
+
+    const tag = node.tagName.toLowerCase();
+
+    if (["script", "style", "noscript", "svg", "button", "nav", "footer"].includes(tag)) {
+      return "";
+    }
+
+    let children = Array.from(node.childNodes).map(walk).join("");
+
+    switch (tag) {
+      case "h1": return `\n\n# ${children.trim()}\n\n`;
+      case "h2": return `\n\n## ${children.trim()}\n\n`;
+      case "h3": return `\n\n### ${children.trim()}\n\n`;
+      case "h4": return `\n\n#### ${children.trim()}\n\n`;
+      case "h5": case "h6": return `\n\n##### ${children.trim()}\n\n`;
+      case "p": return `\n\n${children.trim()}\n\n`;
+      case "strong": case "b": return `**${children.trim()}**`;
+      case "em": case "i": return `*${children.trim()}*`;
+      case "code":
+        return node.parentElement && node.parentElement.tagName.toLowerCase() === "pre"
+          ? node.textContent
+          : `\`${children.trim()}\``;
+      case "pre": return `\n\n\`\`\`\n${node.textContent.trim()}\n\`\`\`\n\n`;
+      case "blockquote": return `\n\n> ${children.trim().replace(/\n/g, "\n> ")}\n\n`;
+      case "ul": return `\n\n${children}\n\n`;
+      case "ol": return `\n\n${children}\n\n`;
+      case "li": return `- ${children.trim()}\n`;
+      case "hr": return `\n\n---\n\n`;
+      case "br": return `\n`;
+      case "a": {
+        const href = node.getAttribute("href");
+        return href && children.trim() ? `[${children.trim()}](${href})` : children;
+      }
+      case "img": {
+        const src = node.getAttribute("src") || node.getAttribute("data-src");
+        const alt = node.getAttribute("alt") || "Image";
+        return src ? `\n\n![${alt}](${src})\n\n` : "";
+      }
+      default:
+        return children;
+    }
+  }
+
+  let bodyMd = walk(doc.body).replace(/\n{3,}/g, "\n\n").trim();
+  const dateStr = new Date().toISOString().split("T")[0];
+  const frontmatter = `---\ntitle: "${(title || "").replace(/"/g, '\\"')}"\nsource: "${url}"\nsite: "${hostname}"\ndate: "${dateStr}"\ncleaner: "KindleFlow Direct (Offline)"\n---\n\n`;
+  return frontmatter + `# ${title}\n\n` + bodyMd;
+}
+
+function generateCleanHtmlDoc(cleanBodyHtml, title, url, hostname) {
+  const dateStr = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${escapeHtml(title)}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Georgia, serif;
+      line-height: 1.7;
+      color: #1a1a1a;
+      max-width: 780px;
+      margin: 40px auto;
+      padding: 0 24px;
+      background: #fafafa;
+    }
+    header {
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    h1 {
+      font-size: 2.2rem;
+      line-height: 1.25;
+      margin-bottom: 12px;
+      color: #111;
+    }
+    .meta {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    .meta a { color: #3b82f6; text-decoration: none; }
+    article img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+      margin: 20px auto;
+      display: block;
+    }
+    article p { margin-bottom: 1.4em; font-size: 1.08rem; }
+    article h2, article h3 { margin-top: 1.6em; margin-bottom: 0.6em; }
+    article blockquote {
+      border-left: 3px solid #c6a869;
+      margin: 20px 0;
+      padding-left: 16px;
+      color: #444;
+      font-style: italic;
+    }
+    article pre {
+      background: #24292e;
+      color: #f6f8fa;
+      padding: 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+    article code { font-family: monospace; font-size: 0.92em; }
+    article table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    article th, article td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+    article th { background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>${escapeHtml(title)}</h1>
+    <div class="meta">
+      Published from <strong>${escapeHtml(hostname)}</strong> • Saved on ${dateStr} • 
+      <a href="${escapeHtml(url)}" target="_blank" rel="noopener">Original Article</a>
+    </div>
+  </header>
+  <article>
+    ${cleanBodyHtml}
+  </article>
+</body>
+</html>`;
 }

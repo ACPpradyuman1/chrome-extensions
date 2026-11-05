@@ -9,14 +9,15 @@ KindleFlow is an open-source Chrome extension (Manifest V3) paired with an on-de
 ## Features
 
 - **1-Click Smart Extraction**: Instantly extracts article content, metadata, read time, and media using Mozilla's Readability engine.
-- **Gemini AI Content Curation**: Leverages Google Gemini Flash to eliminate ads, newsletter popups, cookie disclaimers, and clickbait while intelligently detecting and preserving data charts, architectural diagrams, and screenshots.
-- **Executive Summary**: Automatically generates a concise 2–3 bullet takeaway section directly under the title.
+- **Dual Processing Modes**:
+  - **Google AI Enhanced Mode**: Uses Gemini Flash to strip ads, sponsored links, cookie popups, and clickbait while intelligently detecting and preserving data charts, diagrams, and code snippets. Automatically generates an executive summary.
+  - **Direct Clean Mode (Zero Google Processing)**: Bypasses cloud AI completely. Generates clean Markdown or clean HTML directly inside your browser in 5 milliseconds with zero network requests to Google, zero API keys required, and 100% offline privacy.
 - **Kindle Paperwhite (12th Gen) Typography**: Tuned for Carta 1300 E-Ink screens (300 PPI), including dark-mode-safe SVGs/charts, readable code blocks, and custom-styled tables.
 - **Automatic 300 PPI Book Covers**: Generates a high-resolution, publisher-style book cover with clean typography and color palettes during the build.
 - **Asynchronous & Resilient**: Native processing runs via a background service worker; closing or clicking away from the popup will not interrupt the pipeline.
 - **Fast Multi-Threaded Pipeline**: Uses a concurrent thread pool (`ThreadPoolExecutor`) to download article images in parallel while generating the cover concurrently during Gemini's network stream (~2–3 second builds).
 - **Zero Idle Footprint**: The Python native host runs strictly on-demand and terminates immediately upon task completion. No background daemons or memory overhead.
-- **Local & Private**: Runs entirely locally on your machine with Google Gemini's free-tier API. No subscriptions, third-party proxies, or telemetry.
+- **100% Free & Private**: Runs locally on your machine with Google Gemini's free-tier API or purely offline. No subscriptions, third-party proxies, or tracking.
 
 ---
 
@@ -26,8 +27,19 @@ KindleFlow is an open-source Chrome extension (Manifest V3) paired with an on-de
 |---|---|---|
 | **Send to Kindle** | Sends the compiled, cover-illustrated EPUB directly to your Kindle device via SMTP. | Delivered to `@kindle.com` inbox |
 | **Download Kindle EPUB** | Generates a standalone, validated EPUB 3 file for drag-and-drop onto Amazon Send to Kindle (zero email credentials needed). | `.epub` file in Downloads |
-| **Download Markdown** | Exports clean, structured GitHub-Flavored Markdown with the Gemini executive summary and preserved images. | `.md` file in Downloads |
-| **Download Clean HTML** | Exports standalone clean HTML with typography and media embedded for offline reading or archiving. | `.html` file in Downloads |
+| **Download Markdown** | Exports clean, structured GitHub-Flavored Markdown (with Gemini executive summary or in direct offline mode without Google processing). | `.md` file in Downloads |
+| **Download Clean HTML** | Exports standalone clean HTML with embedded reader typography and media for offline reading or archiving (zero Google processing in direct mode). | `.html` file in Downloads |
+
+---
+
+## Google Gemini API (100% Free Tier)
+
+KindleFlow uses Google's official Gemini Flash model for intelligent ad removal, diagram preservation, and executive takeaways.
+
+- **Completely Free**: Google AI Studio provides free API keys with no credit card required.
+- **Where to Get Your Key**: Generate a free API key at **[Google AI Studio](https://aistudio.google.com/app/apikey)**.
+- **Generous Free Quota**: The free tier includes **15 Requests Per Minute (RPM)** and **1,500 Requests Per Day** on `gemini-flash-lite-latest` and `gemini-flash-latest`. This is more than sufficient to process dozens of long-form articles, technical whitepapers, and book chapters every day at zero cost ($0.00).
+- **Optional Use**: If you do not wish to use an API key or prefer not to send article text to Google, simply toggle off **Google AI Processing** in the popup to use **Direct Clean Mode** (powered offline by Mozilla Readability).
 
 ---
 
@@ -36,10 +48,12 @@ KindleFlow is an open-source Chrome extension (Manifest V3) paired with an on-de
 ```
 kindleflow-extension/
 ├── manifest.json              # Chrome Manifest V3 configuration & permissions
-├── popup.html                 # Sleek dark-mode extension popup UI
-├── popup.js                   # UI handler & background job communicator
+├── popup.html                 # Sleek dark-mode extension popup UI with AI toggle
+├── popup.js                   # UI controller, client-side Markdown/HTML exporter, & job worker
 ├── background.js              # Service worker managing persistent native messaging
-├── install.sh                 # Native host installer for macOS and Linux
+├── install.sh                 # 1-click native host installer for macOS and Linux
+├── install.bat                # 1-click native host installer for Windows
+├── run_host.sh                # Isolated native host launcher script
 ├── native_host.py             # Native messaging bridge & Gemini AI orchestrator
 ├── requirements.txt           # Python dependencies
 ├── libs/
@@ -60,7 +74,7 @@ kindleflow-extension/
 
 1. Google Chrome (or Chromium-based browser like Brave or Edge).
 2. Python 3.8+.
-3. A Google Gemini API key from Google AI Studio (available on the free tier).
+3. *(Optional)* A Google Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey) for AI cleaning.
 
 ---
 
@@ -96,7 +110,7 @@ This single automated command:
 
 1. Click the KindleFlow icon in your Chrome toolbar.
 2. Click the Settings icon in the top header.
-3. Paste your Gemini API Key from Google AI Studio.
+3. Paste your Gemini API Key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 4. *(Optional)* If using direct email delivery via SMTP:
    - Enter your Kindle Email (`your_device@kindle.com`).
    - Enter your Sender Email (`your_email@gmail.com`).
@@ -108,7 +122,9 @@ This single automated command:
 ## Technical Details
 
 1. **Extraction**: When the popup opens on any webpage, `Readability.js` inspects the DOM and isolates the primary article container, stripping extraneous scripts and stylesheets.
-2. **AI Editorial Filtering**: If a Gemini API key is configured, content and image metadata are sent to Gemini Flash. The model strips sponsors, paywalls, and decorative icons, formats tabular data into Markdown, embeds informative diagrams, and crafts an executive summary. If no API key is provided, a heuristic Markdown cleaner is used as a fallback.
+2. **AI Editorial Filtering vs. Direct Offline Mode**:
+   - In **AI Mode**, content and image metadata are sent to Gemini Flash. The model strips sponsors, paywalls, and decorative icons, formats tabular data into Markdown, embeds informative diagrams, and crafts an executive summary.
+   - In **Direct Mode**, Mozilla Readability data is converted client-side into clean Markdown or standalone responsive HTML in milliseconds without contacting Google servers.
 3. **Parallel Pipeline**:
    - The native host spins up a worker thread to pre-generate a 300 PPI book cover using Pillow while Gemini streams the cleaned text over the network.
    - All inline diagrams and images identified by Gemini are fetched concurrently using 8 parallel worker threads.
@@ -119,7 +135,7 @@ This single automated command:
 
 ## Security & Privacy
 
-- **No Remote Telemetry**: The extension connects solely to Google Gemini API (using your own private key) and Amazon's SMTP servers (if configured).
+- **No Remote Telemetry**: The extension connects solely to Google Gemini API (using your own private key) and Amazon's SMTP servers (if configured). In Direct Mode, zero network requests are made.
 - **Local Native Messaging**: Chrome Native Messaging uses standard input/output (`stdio`) locally on your machine with strict origin verification bound to the extension ID.
 - **Credential Storage**: Settings are stored exclusively in Chrome's sandboxed `chrome.storage.local`.
 

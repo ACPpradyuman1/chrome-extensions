@@ -272,19 +272,24 @@ def main():
 
         cover_future = cover_executor.submit(make_cover_task)
 
-    # 1. Step: Gemini Cleaning & Structuring
-    send_message({"step": "gemini", "message": "Gemini analyzing content & filtering ads/diagrams..."})
+    skip_gemini = payload.get("skipGemini", False)
 
-    try:
-        if api_key:
-            cleaned_md = call_gemini_api(api_key, title, url, hostname, text_content, images)
-            send_message({"step": "gemini", "message": "Gemini successfully structured article & kept relevant diagrams."})
-        else:
-            send_message({"step": "gemini", "message": "No API key found. Using local heuristic cleaner (add Gemini key in Settings for AI cleaning)."})
-            cleaned_md = fallback_local_clean(title, text_content, url, hostname)
-    except Exception as e:
-        send_message({"step": "gemini", "message": f"Gemini notice ({e}). Falling back to local cleaner..."})
+    # 1. Step: Content Structuring (Gemini AI or Direct Offline Cleaner)
+    if skip_gemini:
+        send_message({"step": "gemini", "message": "Direct mode: bypassing Google AI processing, using local clean parser..."})
         cleaned_md = fallback_local_clean(title, text_content, url, hostname)
+    else:
+        send_message({"step": "gemini", "message": "Gemini analyzing content & filtering ads/diagrams..."})
+        try:
+            if api_key:
+                cleaned_md = call_gemini_api(api_key, title, url, hostname, text_content, images)
+                send_message({"step": "gemini", "message": "Gemini successfully structured article & kept relevant diagrams."})
+            else:
+                send_message({"step": "gemini", "message": "No API key found. Using local heuristic cleaner (add Gemini key in Settings for AI cleaning)."})
+                cleaned_md = fallback_local_clean(title, text_content, url, hostname)
+        except Exception as e:
+            send_message({"step": "gemini", "message": f"Gemini notice ({e}). Falling back to local cleaner..."})
+            cleaned_md = fallback_local_clean(title, text_content, url, hostname)
 
     # Handle Markdown Download Action
     if action == "markdown":

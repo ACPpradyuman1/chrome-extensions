@@ -36,8 +36,10 @@ To load any of the extensions locally in Google Chrome:
 **1-Click Clean Reader & Kindle Publisher** powered by Mozilla Readability and Google Gemini AI.
 
 - Extracts article text and figures using Mozilla's Readability engine.
-- Filters out ads, sponsored sections, clickbait, and cookie banners using Google Gemini AI while intelligently preserving informative diagrams, charts, infographics, and technical tables.
-- Automatically generates an executive summary bullet list and formats content with high-contrast typography optimized for Kindle Paperwhite (12th Gen Carta 1300 / 300 PPI).
+- Offers two processing modes:
+  - **AI Enhanced Mode**: Filters out ads, sponsored sections, clickbait, and cookie banners using Google Gemini Flash while intelligently preserving informative diagrams, charts, infographics, and technical tables. Generates a 2-3 bullet executive takeaway summary. (Gemini API is 100% free with no credit card required from [Google AI Studio](https://aistudio.google.com/app/apikey), offering 15 RPM / 1,500 daily requests).
+  - **Direct Clean Mode**: Bypasses cloud AI entirely. Instantly exports clean Markdown or responsive HTML in 5 milliseconds with zero data sent to Google and zero API keys needed.
+- Automatically formats content with high-contrast typography optimized for Kindle Paperwhite (12th Gen Carta 1300 / 300 PPI).
 - Offers 4 instant actions: direct delivery to `@kindle.com` via SMTP, standalone Kindle EPUB download (for zero-credential manual upload via Amazon Send to Kindle), structured Markdown download, or clean offline HTML download.
 - Fast multi-threaded pipeline: concurrently downloads inline images with an 8-worker thread pool and renders custom 300 PPI book covers during the AI network stream (~2–3s builds).
 - Resilient background worker: operations run via a background service worker so tasks continue uninterrupted even if the user clicks away from the popup.
